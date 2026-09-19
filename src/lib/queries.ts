@@ -394,6 +394,42 @@ export const getPublishedAuthorSlugs = unstable_cache(
   { tags: ["articles"], revalidate: 300 },
 );
 
+export const getAllPublishedAuthors = unstable_cache(
+  async (): Promise<(AuthorProfile & { articleCount: number })[]> => {
+    const payload = await getPayloadClient();
+    const res = await payload.find({
+      collection: "articles",
+      where: { status: { in: ["published", "updated"] } },
+      limit: 1000,
+      depth: 1,
+      overrideAccess: false,
+    });
+    const authors = new Map<number, AuthorProfile & { articleCount: number }>();
+    for (const doc of res.docs as any[]) {
+      const author = doc.author;
+      if (!author?.slug) continue;
+      const existing = authors.get(author.id);
+      if (existing) {
+        existing.articleCount += 1;
+        continue;
+      }
+      authors.set(author.id, {
+        id: author.id,
+        name: author.name,
+        slug: author.slug,
+        bio: author.bio ?? null,
+        roleTitle: author.roleTitle ?? null,
+        avatar: author.avatar ?? null,
+        socialLinks: (author.socialLinks ?? []).map((s: any) => ({ platform: s.platform, url: s.url })),
+        articleCount: 1,
+      });
+    }
+    return [...authors.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  },
+  ["all-published-authors"],
+  { tags: ["articles"], revalidate: 300 },
+);
+
 export const getCategoryWithArticles = unstable_cache(
   async (
     categorySlug: string,

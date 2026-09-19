@@ -52,5 +52,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  entries.push({ url: `${SITE_URL}/autores`, changeFrequency: "weekly", priority: 0.4 });
+
+  const legalPages = [
+    "sobre-nosotros",
+    "contacto",
+    "politica-editorial",
+    "politica-de-correcciones",
+    "politica-de-privacidad",
+    "cookies",
+    "terminos-y-condiciones",
+    "publicidad",
+  ];
+  for (const slug of legalPages) {
+    entries.push({ url: `${SITE_URL}/${slug}`, changeFrequency: "yearly", priority: 0.2 });
+  }
+
   return entries;
 }

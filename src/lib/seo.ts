@@ -8,6 +8,11 @@ export function organizationJsonLd() {
     name: SITE_NAME,
     url: SITE_URL,
     logo: `${SITE_URL}/favicon.ico`,
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "contacto@noticiaspro.com",
+      contactType: "customer support",
+    },
   };
 }
 
