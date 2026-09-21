@@ -71,8 +71,8 @@ export const Sources: CollectionConfig = {
       name: "feedUrl",
       type: "text",
       admin: {
-        description: "URL del feed RSS/Atom, solo relevante si ingestionActive está activo.",
-        condition: (_, siblingData) => Boolean(siblingData?.ingestionActive),
+        description:
+          "URL del feed RSS/Atom de esta fuente. Llénalo primero y luego marca ingestionActive para activarlo — no al revés.",
       },
     },
     {
@@ -81,7 +81,6 @@ export const Sources: CollectionConfig = {
       relationTo: "categories",
       admin: {
         description: "Categoría sugerida por defecto para los ítems de este feed (el clasificador por palabras clave puede anularla).",
-        condition: (_, siblingData) => Boolean(siblingData?.ingestionActive),
       },
     },
   ],
