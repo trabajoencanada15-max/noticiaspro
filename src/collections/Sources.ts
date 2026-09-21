@@ -58,5 +58,31 @@ export const Sources: CollectionConfig = {
       type: "textarea",
       admin: { description: "Nota interna editorial — nunca se muestra públicamente." },
     },
+    {
+      name: "ingestionActive",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        description:
+          "Si está activo, el motor de ingestión de noticias consulta feedUrl periódicamente. Actívalo solo para feeds que ya revisaste (ver licenseStatus) — el motor nunca copia el artículo completo, solo usa título/resumen como radar de tendencias.",
+      },
+    },
+    {
+      name: "feedUrl",
+      type: "text",
+      admin: {
+        description: "URL del feed RSS/Atom, solo relevante si ingestionActive está activo.",
+        condition: (_, siblingData) => Boolean(siblingData?.ingestionActive),
+      },
+    },
+    {
+      name: "categoryHint",
+      type: "relationship",
+      relationTo: "categories",
+      admin: {
+        description: "Categoría sugerida por defecto para los ítems de este feed (el clasificador por palabras clave puede anularla).",
+        condition: (_, siblingData) => Boolean(siblingData?.ingestionActive),
+      },
+    },
   ],
 };

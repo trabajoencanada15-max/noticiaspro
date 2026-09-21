@@ -189,6 +189,16 @@ export const Articles: CollectionConfig = {
       },
     },
     {
+      name: "aiGenerated",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "Borrador inicial generado por el motor de ingestión automática — ver política editorial.",
+      },
+    },
+    {
       name: "sourceReferences",
       type: "array",
       label: "Fuentes consultadas",

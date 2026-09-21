@@ -14,6 +14,7 @@ import { Tags } from "./collections/Tags";
 import { Authors } from "./collections/Authors";
 import { Sources } from "./collections/Sources";
 import { Articles } from "./collections/Articles";
+import { IngestedItems } from "./collections/IngestedItems";
 import { BreakingNews } from "./globals/BreakingNews";
 
 const filename = fileURLToPath(import.meta.url);
@@ -26,7 +27,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Categories, Regions, Tags, Authors, Sources, Articles],
+  collections: [Users, Media, Categories, Regions, Tags, Authors, Sources, Articles, IngestedItems],
   globals: [BreakingNews],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
