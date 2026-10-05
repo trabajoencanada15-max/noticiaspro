@@ -1,6 +1,6 @@
 import type { Payload } from "payload";
 import { fetchFeedItems } from "./rss";
-import { hashTitle } from "./dedup";
+import { hashTitle, titleSimilarity } from "./dedup";
 import { categorizeItem } from "./categorize";
 import { rewriteAsOriginalArticle } from "./rewrite";
 import { attachFeaturedImage } from "./image";
@@ -11,6 +11,7 @@ export type IngestSummary = {
   itemsSeen: number;
   drafted: number;
   skippedDuplicate: number;
+  skippedSimilar: number;
   skippedNoCategory: number;
   failed: number;
   queued: number;
@@ -27,6 +28,11 @@ const MAX_PROCESS_PER_RUN = 2;
 // reintentar para que no le gane el turno a lo que sí acaba de pasar.
 const STALE_MS = 48 * 60 * 60 * 1000;
 const TERMINAL_STATUSES = new Set(["drafted", "skipped_no_category"]);
+// Qué tan parecidos (0-1, Jaccard sobre palabras significativas) deben ser dos
+// títulos para asumir que son la misma noticia cubierta por medios distintos.
+// Calibrado contra pares reales: coincidencias verdaderas dieron 0.25-0.75,
+// noticias distintas dieron 0.00-0.13 — ver commit para el detalle de la prueba.
+const SIMILARITY_THRESHOLD = 0.25;
 
 async function resolveOrCreateTags(payload: Payload, names: string[]): Promise<number[]> {
   const ids: number[] = [];
@@ -67,10 +73,25 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
     itemsSeen: 0,
     drafted: 0,
     skippedDuplicate: 0,
+    skippedSimilar: 0,
     skippedNoCategory: 0,
     failed: 0,
     queued: 0,
   };
+
+  // Mismo hecho noticioso cubierto por Infobae/El País/Diario Libre a la vez
+  // (titulares distintos, misma historia) — un pool en memoria de títulos
+  // vistos recientemente (en esta corrida o en corridas anteriores) evita
+  // redactar la misma noticia dos veces solo porque la reportaron dos medios.
+  const recentRes = await payload.find({
+    collection: "ingested-items",
+    where: { createdAt: { greater_than: new Date(Date.now() - STALE_MS).toISOString() } },
+    limit: 500,
+    depth: 0,
+    sort: "-createdAt",
+    overrideAccess: true,
+  });
+  const recentTitles: string[] = recentRes.docs.map((d) => d.title as string);
 
   const sourcesRes = await payload.find({
     collection: "sources",
@@ -142,6 +163,31 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
       if (isTerminal || isStale) {
         summary.skippedDuplicate += 1;
         continue;
+      }
+
+      if (!existingDoc) {
+        const matchedTitle = recentTitles.find((t) => titleSimilarity(t, item.title) >= SIMILARITY_THRESHOLD);
+        if (matchedTitle) {
+          await payload.create({
+            collection: "ingested-items",
+            overrideAccess: true,
+            data: {
+              title: item.title,
+              sourceFeed: source.id,
+              originalUrl: item.link,
+              titleHash,
+              originalPublishedAt: item.publishedAt ?? undefined,
+              status: "skipped_similar",
+              errorMessage: `Misma noticia ya cubierta: "${matchedTitle}"`,
+              processedAt: new Date().toISOString(),
+            },
+          });
+          summary.skippedSimilar += 1;
+          continue;
+        }
+        // Genuinamente nuevo y distinto — se suma al pool para que otras
+        // fuentes de esta misma corrida también lo detecten como ya visto.
+        recentTitles.push(item.title);
       }
 
       if (summary.drafted + summary.failed >= MAX_PROCESS_PER_RUN) {

@@ -62,6 +62,7 @@ export const IngestedItems: CollectionConfig = {
         { label: "Redactando", value: "drafting" },
         { label: "Borrador creado", value: "drafted" },
         { label: "Duplicado (omitido)", value: "skipped_duplicate" },
+        { label: "Misma noticia en otro medio (omitido)", value: "skipped_similar" },
         { label: "Sin categoría (omitido)", value: "skipped_no_category" },
         { label: "Falló", value: "failed" },
       ],
@@ -77,8 +78,8 @@ export const IngestedItems: CollectionConfig = {
       name: "errorMessage",
       type: "textarea",
       admin: {
-        description: "Detalle del fallo (cuota de IA, red, etc.) — vacío si no hubo error.",
-        condition: (_, siblingData) => siblingData?.status === "failed",
+        description: "Detalle del fallo, o qué título coincidente causó el descarte por similitud.",
+        condition: (_, siblingData) => siblingData?.status === "failed" || siblingData?.status === "skipped_similar",
       },
     },
     {
