@@ -13,10 +13,20 @@ export type IngestSummary = {
   skippedDuplicate: number;
   skippedNoCategory: number;
   failed: number;
+  queued: number;
 };
 
 const DEFAULT_AUTHOR_SLUG = process.env.AI_INGESTION_AUTHOR_SLUG || "redaccion-noticiaspro";
 const MAX_ITEMS_PER_FEED = 20;
+// Cada ítem procesado hace llamadas reales a Claude + Unsplash (varios segundos
+// cada una) — hay que quedarse muy por debajo del límite de la función
+// serverless (maxDuration = 60s en route.ts) aunque ya haya un backlog grande.
+const MAX_PROCESS_PER_RUN = 4;
+// Un ítem que lleva más de 48h sin llegar a un veredicto final (ej. llevaba
+// semanas fallando por falta de saldo) ya no es "noticia fresca" — se deja de
+// reintentar para que no le gane el turno a lo que sí acaba de pasar.
+const STALE_MS = 48 * 60 * 60 * 1000;
+const TERMINAL_STATUSES = new Set(["drafted", "skipped_no_category"]);
 
 async function resolveOrCreateTags(payload: Payload, names: string[]): Promise<number[]> {
   const ids: number[] = [];
@@ -59,6 +69,7 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
     skippedDuplicate: 0,
     skippedNoCategory: 0,
     failed: 0,
+    queued: 0,
   };
 
   const sourcesRes = await payload.find({
@@ -108,11 +119,34 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
       });
       const existingDoc = existing.docs[0];
 
-      // Un resultado "failed" (cuota, red, etc.) es un intento que no llegó a
-      // ningún veredicto real — se reintenta en vez de bloquearse para siempre.
-      // Cualquier otro estado (drafted, skipped_*) sí es un veredicto final.
-      if (existingDoc && existingDoc.status !== "failed") {
+      const isTerminal = Boolean(existingDoc && TERMINAL_STATUSES.has(existingDoc.status as string));
+      const isStale =
+        Boolean(existingDoc) &&
+        Date.now() - new Date(existingDoc!.createdAt as string).getTime() > STALE_MS;
+      if (isTerminal || isStale) {
         summary.skippedDuplicate += 1;
+        continue;
+      }
+
+      if (summary.drafted + summary.failed >= MAX_PROCESS_PER_RUN) {
+        // Ya se alcanzó el cupo de esta corrida — se deja en cola (detected)
+        // para la próxima, en vez de forzar más llamadas a Claude/Unsplash
+        // y arriesgar que la función serverless se quede sin tiempo.
+        if (!existingDoc) {
+          await payload.create({
+            collection: "ingested-items",
+            overrideAccess: true,
+            data: {
+              title: item.title,
+              sourceFeed: source.id,
+              originalUrl: item.link,
+              titleHash,
+              originalPublishedAt: item.publishedAt ?? undefined,
+              status: "detected",
+            },
+          });
+        }
+        summary.queued += 1;
         continue;
       }
 

@@ -4,6 +4,10 @@ import { getPayload } from "payload";
 import { runIngestion } from "@/lib/newsEngine/ingest";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 
+// Máximo permitido en el plan Hobby de Vercel — margen de seguridad frente al
+// límite por defecto (10s), ya que cada ítem hace llamadas reales a Claude/Unsplash.
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const { success } = rateLimit(`cron:${getClientIp(request)}`, { limit: 10, windowMs: 60_000 });
   if (!success) {
