@@ -66,11 +66,15 @@ export default async function RegionPage({ params, searchParams }: Args) {
         </h1>
       </header>
 
-      <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-        {articles.map((article) => (
-          <ArticleCard key={article.id} article={article} variant="grid" />
-        ))}
-      </div>
+      {articles.length === 0 ? (
+        <p className="mt-8 text-muted-foreground">Todavía no hay artículos publicados en esta edición.</p>
+      ) : (
+        <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
+          {articles.map((article) => (
+            <ArticleCard key={article.id} article={article} variant="grid" />
+          ))}
+        </div>
+      )}
 
       <Pagination basePath={`/region/${slug}`} currentPage={page} totalPages={totalPages} />
     </div>

@@ -4,7 +4,7 @@ import { hashTitle, titleSimilarity } from "./dedup";
 import { categorizeItem } from "./categorize";
 import { rewriteAsOriginalArticle } from "./rewrite";
 import { attachFeaturedImage } from "./image";
-import { paragraphsToLexicalBody } from "./lexical";
+import { blocksToLexicalBody } from "./lexical";
 
 export type IngestSummary = {
   sourcesChecked: number;
@@ -286,7 +286,7 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
             tags: tagIds,
             featuredImage: imageId,
             excerpt: rewritten.excerpt,
-            body: paragraphsToLexicalBody(rewritten.bodyParagraphs),
+            body: blocksToLexicalBody(rewritten.body),
             aiGenerated: true,
             sourceReferences: [{ source: source.id, note: item.title, url: item.link }],
             seo: {

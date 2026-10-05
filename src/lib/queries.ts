@@ -356,22 +356,22 @@ export const getSitemapArticles = unstable_cache(
 
 export const getPublishedCategorySlugs = unstable_cache(
   async (): Promise<string[]> => {
+    // Todas las categorías reales visibles en el menú, tengan o no artículos
+    // publicados hoy — así el sitemap y el build estático las cubren todas,
+    // y una categoría recién creada o momentáneamente vacía no es una ruta
+    // ausente del índice de Google.
     const payload = await getPayloadClient();
     const res = await payload.find({
-      collection: "articles",
-      where: { status: { in: ["published", "updated"] } },
+      collection: "categories",
+      where: { showInNav: { equals: true } },
       limit: 1000,
-      depth: 1,
+      depth: 0,
       overrideAccess: false,
     });
-    const slugs = new Set<string>();
-    for (const doc of res.docs as any[]) {
-      if (doc.category?.slug) slugs.add(doc.category.slug);
-    }
-    return [...slugs];
+    return res.docs.map((d: any) => d.slug);
   },
   ["published-category-slugs"],
-  { tags: ["articles"], revalidate: 300 },
+  { tags: ["categories"], revalidate: 300 },
 );
 
 export const getPublishedAuthorSlugs = unstable_cache(
@@ -458,8 +458,8 @@ export const getCategoryWithArticles = unstable_cache(
       depth: 1,
       overrideAccess: false,
     });
-    if (res.totalDocs === 0) return null;
-
+    // Categoría válida sin artículos todavía (ej. recién creada, o la última
+    // se archivó) no es un 404 — es una sección real que hoy está vacía.
     return {
       category: {
         id: category.id,
@@ -470,7 +470,7 @@ export const getCategoryWithArticles = unstable_cache(
       },
       articles: res.docs.map(toArticleSummary),
       totalDocs: res.totalDocs,
-      totalPages: res.totalPages,
+      totalPages: Math.max(1, res.totalPages),
       page: res.page ?? page,
     };
   },
@@ -503,22 +503,20 @@ export const getNavRegions = unstable_cache(
 /** Only regions with at least one published article get a static page — no empty programmatic pages. */
 export const getPublishedRegionSlugs = unstable_cache(
   async (): Promise<string[]> => {
+    // Mismo criterio que categorías: todas las ediciones reales visibles en
+    // el selector, tengan o no artículos publicados hoy.
     const payload = await getPayloadClient();
     const res = await payload.find({
-      collection: "articles",
-      where: { status: { in: ["published", "updated"] } },
+      collection: "regions",
+      where: { showInSelector: { equals: true } },
       limit: 1000,
-      depth: 1,
+      depth: 0,
       overrideAccess: false,
     });
-    const slugs = new Set<string>();
-    for (const doc of res.docs as any[]) {
-      if (doc.region?.slug) slugs.add(doc.region.slug);
-    }
-    return [...slugs];
+    return res.docs.map((d: any) => d.slug);
   },
   ["published-region-slugs"],
-  { tags: ["articles"], revalidate: 300 },
+  { tags: ["regions"], revalidate: 300 },
 );
 
 export const getRegionWithArticles = unstable_cache(
@@ -549,8 +547,8 @@ export const getRegionWithArticles = unstable_cache(
       depth: 1,
       overrideAccess: false,
     });
-    if (res.totalDocs === 0) return null;
-
+    // Misma lógica que categorías: la región existe aunque hoy no tenga
+    // artículos — no es una ruta rota.
     return {
       region: {
         id: region.id,
@@ -560,7 +558,7 @@ export const getRegionWithArticles = unstable_cache(
       },
       articles: res.docs.map(toArticleSummary),
       totalDocs: res.totalDocs,
-      totalPages: res.totalPages,
+      totalPages: Math.max(1, res.totalPages),
       page: res.page ?? page,
     };
   },
@@ -596,8 +594,8 @@ export const getAuthorWithArticles = unstable_cache(
       depth: 1,
       overrideAccess: false,
     });
-    if (res.totalDocs === 0) return null;
-
+    // Misma lógica que categorías/regiones: el autor existe aunque hoy no
+    // tenga artículos publicados — no es una ruta rota.
     return {
       author: {
         id: author.id,
@@ -610,7 +608,7 @@ export const getAuthorWithArticles = unstable_cache(
       },
       articles: res.docs.map(toArticleSummary),
       totalDocs: res.totalDocs,
-      totalPages: res.totalPages,
+      totalPages: Math.max(1, res.totalPages),
       page: res.page ?? page,
     };
   },
