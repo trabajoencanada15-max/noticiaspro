@@ -7,7 +7,10 @@ export function organizationJsonLd() {
     "@type": "Organization",
     name: SITE_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/favicon.ico`,
+    // Google exige mínimo 112x112px para el logo de Organization/NewsArticle
+    // en noticias — el favicon (32x32) no cumple, por eso se usa el ícono de
+    // 180x180 en su lugar (ver src/app/apple-icon.tsx).
+    logo: `${SITE_URL}/apple-icon`,
     contactPoint: {
       "@type": "ContactPoint",
       email: "contacto@noticiaspro.com",
@@ -72,7 +75,9 @@ export function newsArticleJsonLd(article: ArticleDetail) {
       name: SITE_NAME,
       logo: {
         "@type": "ImageObject",
-        url: `${SITE_URL}/favicon.ico`,
+        url: `${SITE_URL}/apple-icon`,
+        width: 180,
+        height: 180,
       },
     },
     mainEntityOfPage: {

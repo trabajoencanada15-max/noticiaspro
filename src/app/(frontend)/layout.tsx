@@ -27,6 +27,21 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  // Respaldo para páginas sin generateMetadata propio (portada, políticas) —
+  // los artículos siguen generando su propio OG/Twitter con imagen real.
+  openGraph: {
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    type: "website",
+    locale: "es",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 // Runs before hydration so the correct theme applies with no flash of the wrong one.

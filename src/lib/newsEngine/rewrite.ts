@@ -32,7 +32,7 @@ Devuelve SOLO un objeto JSON válido, sin texto adicional, sin markdown, con est
   "tags": ["string", "string", "..."],
   "metaTitle": "string, MENOS de 60 caracteres, con gancho de CTR",
   "metaDescription": "string, ENTRE 150 y 160 caracteres exactos — ni más corto ni más largo, para aprovechar todo el espacio del snippet de Google",
-  "imageQuery": "string EN INGLÉS, 2-4 palabras genéricas que describan la ESCENA visual (no el titular, no nombres propios) para buscar una foto de stock editorial — ej. 'government building meeting', 'rain storm city street', 'courtroom justice gavel', 'soccer stadium match'"
+  "imageQuery": "string EN INGLÉS, 3-6 palabras que describan la escena visual CONCRETA del hecho — tipo de evento específico + lugar/entorno, no la categoría genérica del portal. Nunca nombres propios de personas (un banco de imágenes de stock no tiene fotos etiquetadas con el nombre de un político o un evento puntual, así que buscarlo da cero resultados). Sí usa el país/ciudad/tipo de locación cuando el hecho lo deja claro. Mal: 'government building meeting' para cualquier noticia de gobierno. Bien, según el hecho real: 'congress chamber vote session', 'flooded street heavy rain tropical', 'migrants border checkpoint crossing', 'stock market trading floor screens', 'political campaign rally crowd outdoors', 'courtroom trial hearing judge'"
 }`;
 
 export type RewriteInput = {
