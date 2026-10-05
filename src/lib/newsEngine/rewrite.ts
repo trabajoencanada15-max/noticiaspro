@@ -20,7 +20,8 @@ Devuelve SOLO un objeto JSON válido, sin texto adicional, sin markdown, con est
   "bodyParagraphs": ["string", "string", "..."],
   "tags": ["string", "string", "..."],
   "metaTitle": "string, MENOS de 60 caracteres, con gancho de CTR",
-  "metaDescription": "string, MENOS de 150 caracteres"
+  "metaDescription": "string, MENOS de 150 caracteres",
+  "imageQuery": "string EN INGLÉS, 2-4 palabras genéricas que describan la ESCENA visual (no el titular, no nombres propios) para buscar una foto de stock editorial — ej. 'government building meeting', 'rain storm city street', 'courtroom justice gavel', 'soccer stadium match'"
 }`;
 
 export type RewriteInput = {
@@ -39,6 +40,7 @@ export type RewriteResult = {
   tags: string[];
   metaTitle: string;
   metaDescription: string;
+  imageQuery: string;
 };
 
 function extractJsonObject(text: string): unknown {
@@ -105,5 +107,6 @@ export async function rewriteAsOriginalArticle(input: RewriteInput): Promise<Rew
     tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 6) : [],
     metaTitle: truncate(parsed.metaTitle || parsed.title, 60),
     metaDescription: truncate(parsed.metaDescription || parsed.excerpt, 150),
+    imageQuery: parsed.imageQuery?.trim() || "newspaper journalism",
   };
 }

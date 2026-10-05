@@ -209,7 +209,7 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
           categoryName: categoryDoc.name,
         });
 
-        const imageId = await attachFeaturedImage(payload, rewritten.title, rewritten.title);
+        const imageId = await attachFeaturedImage(payload, rewritten.imageQuery, rewritten.title);
         const tagIds = await resolveOrCreateTags(payload, rewritten.tags);
 
         const article = await payload.create({
