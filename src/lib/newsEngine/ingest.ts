@@ -106,23 +106,35 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
         depth: 0,
         overrideAccess: true,
       });
-      if (existing.docs.length > 0) {
+      const existingDoc = existing.docs[0];
+
+      // Un resultado "failed" (cuota, red, etc.) es un intento que no llegó a
+      // ningún veredicto real — se reintenta en vez de bloquearse para siempre.
+      // Cualquier otro estado (drafted, skipped_*) sí es un veredicto final.
+      if (existingDoc && existingDoc.status !== "failed") {
         summary.skippedDuplicate += 1;
         continue;
       }
 
-      const ingested = await payload.create({
-        collection: "ingested-items",
-        overrideAccess: true,
-        data: {
-          title: item.title,
-          sourceFeed: source.id,
-          originalUrl: item.link,
-          titleHash,
-          originalPublishedAt: item.publishedAt ?? undefined,
-          status: "detected",
-        },
-      });
+      const ingested = existingDoc
+        ? await payload.update({
+            collection: "ingested-items",
+            id: existingDoc.id,
+            overrideAccess: true,
+            data: { status: "detected", errorMessage: "" },
+          })
+        : await payload.create({
+            collection: "ingested-items",
+            overrideAccess: true,
+            data: {
+              title: item.title,
+              sourceFeed: source.id,
+              originalUrl: item.link,
+              titleHash,
+              originalPublishedAt: item.publishedAt ?? undefined,
+              status: "detected",
+            },
+          });
 
       try {
         const matchedCategory = await categorizeItem(payload, `${item.title} ${item.summary}`);
