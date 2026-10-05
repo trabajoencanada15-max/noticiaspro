@@ -21,7 +21,7 @@ const MAX_ITEMS_PER_FEED = 20;
 // Cada ítem procesado hace llamadas reales a Claude + Unsplash (varios segundos
 // cada una) — hay que quedarse muy por debajo del límite de la función
 // serverless (maxDuration = 60s en route.ts) aunque ya haya un backlog grande.
-const MAX_PROCESS_PER_RUN = 4;
+const MAX_PROCESS_PER_RUN = 2;
 // Un ítem que lleva más de 48h sin llegar a un veredicto final (ej. llevaba
 // semanas fallando por falta de saldo) ya no es "noticia fresca" — se deja de
 // reintentar para que no le gane el turno a lo que sí acaba de pasar.
@@ -106,18 +106,34 @@ export async function runIngestion(payload: Payload): Promise<IngestSummary> {
       continue; // Fallo a nivel de feed (red/formato) — se reintenta en la próxima corrida.
     }
 
-    for (const item of items.slice(0, MAX_ITEMS_PER_FEED)) {
-      summary.itemsSeen += 1;
-      const titleHash = hashTitle(item.title);
+    const batch = items.slice(0, MAX_ITEMS_PER_FEED).map((item) => ({ item, titleHash: hashTitle(item.title) }));
 
-      const existing = await payload.find({
-        collection: "ingested-items",
-        where: { or: [{ originalUrl: { equals: item.link } }, { titleHash: { equals: titleHash } }] },
-        limit: 1,
-        depth: 0,
-        overrideAccess: true,
-      });
-      const existingDoc = existing.docs[0];
+    // Una sola consulta por feed en vez de una por ítem — con el backlog
+    // acumulado, N consultas individuales ya alcanzaban a agotar el tiempo
+    // de la función serverless antes de llegar siquiera a procesar nada.
+    const existingRes = batch.length
+      ? await payload.find({
+          collection: "ingested-items",
+          where: {
+            or: [
+              { originalUrl: { in: batch.map((b) => b.item.link) } },
+              { titleHash: { in: batch.map((b) => b.titleHash) } },
+            ],
+          },
+          limit: batch.length,
+          depth: 0,
+          overrideAccess: true,
+        })
+      : { docs: [] };
+    const existingByKey = new Map<string, (typeof existingRes.docs)[number]>();
+    for (const doc of existingRes.docs) {
+      existingByKey.set(`url:${doc.originalUrl}`, doc);
+      existingByKey.set(`hash:${doc.titleHash}`, doc);
+    }
+
+    for (const { item, titleHash } of batch) {
+      summary.itemsSeen += 1;
+      const existingDoc = existingByKey.get(`url:${item.link}`) ?? existingByKey.get(`hash:${titleHash}`);
 
       const isTerminal = Boolean(existingDoc && TERMINAL_STATUSES.has(existingDoc.status as string));
       const isStale =
